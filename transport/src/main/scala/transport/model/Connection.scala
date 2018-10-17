@@ -1,4 +1,6 @@
 package transport.model
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe._
 
 sealed trait Connection {
   type AttributesType <: ConnectionAttributes
@@ -110,4 +112,9 @@ object MediatorConnection {
   implicit lazy val ordering: Ordering[MediatorConnection] = (x: MediatorConnection, y: MediatorConnection) => {
     Connection.ordering.compare(x, y)
   }
+}
+
+object Connection{
+  implicit lazy val decoder: Decoder[Connection] = deriveDecoder
+  implicit lazy val encoder: Encoder[Connection] = deriveEncoder
 }

@@ -65,7 +65,7 @@ class StandardTransportIssueResolverSpec
       }
       "successfully resolve" in {
         assert {
-          graph.resolve.connections
+          graph.resolve.get.connections
             .sortBy(c => (c.supplier.name, c.recipient.name))
             .map(_.units) == Seq(
             // @formatter:off
@@ -128,7 +128,7 @@ class StandardTransportIssueResolverSpec
         }
         "successfully resolve" in {
           assert {
-            graph.resolve.connections
+            graph.resolve.get.connections
               .sortBy(c => (c.supplier.name, c.recipient.name))
               .map(_.units) == Seq(
               // @formatter:off
@@ -188,7 +188,7 @@ class StandardTransportIssueResolverSpec
         }
         "successfully resolve" in {
           assert {
-            graph.resolve.connections
+            graph.resolve.get.connections
               .sortBy(c => (c.supplier.name, c.recipient.name))
               .map(_.units) == Seq(
               // @formatter:off

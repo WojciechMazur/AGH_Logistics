@@ -13,15 +13,30 @@ lazy val root = (project in file("."))
     name := "AGH_Logistics"
   )
   .aggregate(
-      transportTables
+    http,
+    transportTables
   )
+
+lazy val http = (project in file("http"))
+  .settings(
+    commonSettings,
+    libraryDependencies ++= Seq(
+      akka,
+      circe
+    ).flatten
+  ).dependsOn(transportTables)
 
 lazy val transportTables = (project in file("transport"))
 .settings(commonSettings,
-  libraryDependencies ++= breezze
+  libraryDependencies ++= Seq(
+    breezze,
+    circe
+  ).flatten
 )
 
 resolvers ++= Seq(
   "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/",
   "Artima Maven Repository" at "http://repo.artima.com/releases"
 )
+
+addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)
