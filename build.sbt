@@ -4,8 +4,7 @@ import Libraries._
 lazy val commonSettings = Seq(
     organization := "edu.pl.agh",
     version := "0.1.0-SNAPSHOT",
-    scalaVersion := "2.12.7",
-    libraryDependencies ++= scalatest
+    scalaVersion := "2.12.7"
 )
 
 lazy val root = (project in file("."))
@@ -13,8 +12,9 @@ lazy val root = (project in file("."))
     name := "AGH_Logistics"
   )
   .aggregate(
-    http,
-    transportTables
+      transportTables,
+      ui,
+      http,
   )
 
 lazy val http = (project in file("http"))
@@ -30,9 +30,13 @@ lazy val transportTables = (project in file("transport"))
 .settings(commonSettings,
   libraryDependencies ++= Seq(
     breezze,
-    circe
-  ).flatten
+    circe,
+    scalatest
+  ).flatten.distinct
 )
+
+lazy val ui = (project in file("logistics-ui"))
+    .settings(commonSettings)
 
 resolvers ++= Seq(
   "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/",
