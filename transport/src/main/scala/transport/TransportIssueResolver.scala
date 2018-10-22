@@ -1,53 +1,61 @@
 package transport
 
 import breeze.linalg.{ DenseMatrix, DenseVector }
-import transport.TransportIssueResolver.{ ConnectionOptimality, Cycle }
+import transport.TransportIssueResolverProvider.{ MaxValue, MinValue }
 import transport.model._
 
-import scala.annotation.tailrec
 import scala.util.Try
 
-private case class TransportIssueResolver(connectionGraph: ConnectionGraph) {
-  private val nonZeroConnections: Seq[Connection] =
-    connectionGraph.connections
-      .filter(_.amount > 0)
+trait TransportIssueResolver {
+  type ConnectionType <: Connection
+  def connectionGraph: ConnectionGraph
+  def dualityCriteriaFn(nonEmptyConnections: Seq[Connection]): Seq[Double]
+  protected def optimalityFn(connection:     ConnectionType):  Double
+  protected def isOptimal: Boolean
+  val transportIssueResolverProvider: TransportIssueResolverProvider
 
-  private val (baseSuppliers, baseRecipients) = nonZeroConnections
+  private val connections = connectionGraph.connections.asInstanceOf[Seq[ConnectionType]]
+  private val nonZeroConnections: Seq[ConnectionType] = connectionGraph.connections
+    .filter(_.units > 0)
+    .asInstanceOf[Seq[ConnectionType]]
+
+  protected lazy val (baseSuppliers, baseRecipients) = nonZeroConnections
     .foldLeft((List.empty[Supplier], List.empty[Recipient])) {
-      case ((suppliers, recipents), connection) =>
+      case ((suppliers, recipients), connection) =>
         (
           suppliers :+ connection.supplier,
-          recipents :+ connection.recipient
+          recipients :+ connection.recipient
         )
     } match {
     case (suppliers, recipients) => (suppliers.distinct, recipients.distinct)
   }
-  private val allBaseNodes = baseSuppliers ++ baseRecipients
 
-  private lazy val nodeDeltaFactors: Map[Node, Double] = {
-    val baseEquations = nonZeroConnections.map {
-      case Connection(_, supplier, recipient, _) =>
-        val x = baseSuppliers.map {
-          case `supplier` => 1.0
-          case _          => 0.0
-        }
-        val y = baseRecipients.map {
-          case `recipient` => 1.0
-          case _           => 0.0
-        }
-        x ++ y
+  protected lazy val allBaseNodes: List[Node] = baseSuppliers ++ baseRecipients
+
+  protected lazy val nodeDeltaFactors: Map[Node, Double] = {
+    val baseEquations = nonZeroConnections.map { c: ConnectionType =>
+      val supplier  = c.supplier
+      val recipient = c.recipient
+      val x = baseSuppliers.map {
+        case `supplier` => 1.0
+        case _          => 0.0
+      }
+      val y = baseRecipients.map {
+        case `recipient` => 1.0
+        case _           => 0.0
+      }
+      x ++ y
     }
+
     val zeroCondition = List
       .fill(allBaseNodes.length)(0.0)
       .updated(baseEquations.head.indexOf(1.0), 1.0)
+
     val equationsMatrix: DenseMatrix[Double] =
       DenseMatrix[List[Double], Double](baseEquations :+ zeroCondition: _*)
 
     //Weights with extra zero for zero condition
-    val weights: DenseVector[Double] = DenseVector(
-      nonZeroConnections
-        .map(-_.weight) :+ 0.0: _*
-    )
+    val weights:     DenseVector[Double] = DenseVector(dualityCriteriaFn(nonZeroConnections) :+ 0.0: _*)
     val solveResult: DenseVector[Double] = equationsMatrix \ weights
 
     allBaseNodes
@@ -55,22 +63,28 @@ private case class TransportIssueResolver(connectionGraph: ConnectionGraph) {
       .toMap
   }
 
-  private lazy val optimalityFactors: Seq[ConnectionOptimality] =
-    connectionGraph.connections
-      .map {
-        case c @ Connection(weight, supplier, recipient, _) =>
-          val optimalityFactor = nodeDeltaFactors.getOrElse(supplier, 0.0) + nodeDeltaFactors
-            .getOrElse(recipient, 0.0) + weight
-          ConnectionOptimality(c, optimalityFactor)
-      }
+  protected lazy val optimalityFactors: Seq[ConnectionOptimality] = connections.map { c =>
+    ConnectionOptimality(c, optimalityFn(c))
+  }
 
-  private def isOptimal: Boolean =
-    optimalityFactors.forall(_.optimalityFactor >= 0)
+  lazy private val sortedConnectionsFactors = {
+    val sortedFactors = optimalityFactors.sortBy(_.optimalityFactor)
+    transportIssueResolverProvider.initOrder match {
+      case MinValue => sortedFactors
+      case MaxValue => sortedFactors.reverse
+    }
+  }
+
+  private def fullfilsCycleCondition(optimalityFactor: Double): Boolean = {
+    transportIssueResolverProvider.initOrder match {
+      case MinValue => optimalityFactor < 0
+      case MaxValue => optimalityFactor > 0
+    }
+  }
 
   private def findCycle(n: Int): Option[Cycle] = {
-    val sortedConnectionFactors = optimalityFactors.sortBy(_.optimalityFactor)
-    sortedConnectionFactors(n) match {
-      case ConnectionOptimality(_, optimalityFactor) if optimalityFactor >= 0 =>
+    sortedConnectionsFactors(n) match {
+      case ConnectionOptimality(_, optimalityFactor) if !fullfilsCycleCondition(optimalityFactor) =>
         None
       case ConnectionOptimality(initialConnection, _) =>
         val recipients = nonZeroConnections
@@ -105,58 +119,35 @@ private case class TransportIssueResolver(connectionGraph: ConnectionGraph) {
     }
   }
 
-  private lazy val foundCycle: Option[Cycle] = findCycle(0)
+  protected lazy val foundCycle: Option[Cycle] = findCycle(0)
 
-  private def transform(cycle: Cycle) = {
-    val transfer = Math.min(cycle.vertical.amount, cycle.horizontal.amount)
+  protected def transform(cycleOpt: Option[Cycle]) =
+    cycleOpt
+      .map { cycle =>
+        val transfer = Math.min(cycle.vertical.units, cycle.horizontal.units)
 
-    val updatedConnections = Seq(
-      cycle.initial.copy(amount    = cycle.initial.amount + transfer),
-      cycle.vertical.copy(amount   = cycle.vertical.amount - transfer),
-      cycle.corner.copy(amount     = cycle.corner.amount + transfer),
-      cycle.horizontal.copy(amount = cycle.horizontal.amount - transfer)
-    )
+        val updatedConnections = Seq(
+          cycle.initial.withUnits(cycle.initial.units + transfer),
+          cycle.vertical.withUnits(cycle.vertical.units - transfer),
+          cycle.corner.withUnits(cycle.corner.units + transfer),
+          cycle.horizontal.withUnits(cycle.horizontal.units - transfer)
+        )
 
-    val appliedCycleConnections =
-      updatedConnections.foldLeft(connectionGraph.connections) {
-        case (connections, update) =>
-          connections.updated(
-            connections.indexWhere(c => c.recipient == update.recipient && c.supplier == update.supplier),
-            update
-          )
+        val appliedCycleConnections =
+          updatedConnections.foldLeft(connectionGraph.connections) {
+            case (accConnections, update) =>
+              accConnections.updated(
+                accConnections.indexWhere(c => c.recipient == update.recipient && c.supplier == update.supplier),
+                update
+              )
+          }
+        assert(
+          appliedCycleConnections
+            .map(_.units)
+            .sum == connectionGraph.connections.map(_.units).sum,
+          "Total amount has changed"
+        )
+        connectionGraph.copy(connections = appliedCycleConnections)
       }
-    assert(
-      appliedCycleConnections
-        .map(_.amount)
-        .sum == connectionGraph.connections.map(_.amount).sum,
-      "Total amount has changed"
-    )
-    connectionGraph.copy(connections = appliedCycleConnections)
-  }
-}
-
-object TransportIssueResolver {
-  @tailrec
-  def apply(connectionGraph: ConnectionGraph): ConnectionGraph = {
-    println(s"Total cost: ${connectionGraph.targetFn}")
-    val resolver      = new TransportIssueResolver(connectionGraph)
-    lazy val cycleOpt = resolver.foundCycle
-    if (resolver.isOptimal || cycleOpt.isEmpty) {
-      resolver.connectionGraph
-    } else TransportIssueResolver(resolver.transform(cycleOpt.get))
-  }
-
-  //Test only!
-  private def singleIteration(connectionGraph: ConnectionGraph): ConnectionGraph = {
-    val resolver = new TransportIssueResolver(connectionGraph)
-    resolver.foundCycle match {
-      case Some(cycle) => resolver.transform(cycle)
-      case None        => connectionGraph
-    }
-  }
-
-  private case class ConnectionOptimality(connection: Connection, optimalityFactor: Double)
-
-  private case class Cycle(initial: Connection, vertical: Connection, corner: Connection, horizontal: Connection)
-
+      .getOrElse(connectionGraph)
 }
