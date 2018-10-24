@@ -4,7 +4,7 @@ sealed trait Node {
   def name:      String
   def available: Double
 
-  require(available >= 0)
+  require(available >= 0, "Available amount cannot be negative")
 }
 
 class Recipient(val name: String, val demand: Double, val available: Double) extends Node {

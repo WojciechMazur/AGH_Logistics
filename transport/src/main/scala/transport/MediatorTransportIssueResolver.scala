@@ -14,7 +14,7 @@ case class MediatorTransportIssueResolver(connectionGraph: ConnectionGraph) exte
       nodeDeltaFactors.getOrElse(connection.supplier, 0.0) +
       nodeDeltaFactors.getOrElse(connection.recipient, 0.0)
   }
-  override protected def isOptimal: Boolean = optimalityFactors.forall(_.optimalityFactor <= 0 || foundCycle.isEmpty)
+  override protected def isOptimal: Boolean = optimalityFactors.forall(_.optimalityFactor <= 0 || optCycle.isEmpty)
   override def dualityCriteriaFn(nonEmptyConnections: Seq[Connection]): Seq[Double] =
     nonEmptyConnections
       .map(c => c.totalCost - c.attributes.totalProfits)
@@ -29,13 +29,13 @@ object MediatorTransportIssueResolver extends TransportIssueResolverProvider {
     val resolver = new MediatorTransportIssueResolver(connectionGraph)
     if (resolver.isOptimal) {
       resolver.connectionGraph
-    } else MediatorTransportIssueResolver(resolver.transform(resolver.foundCycle))
+    } else MediatorTransportIssueResolver(resolver.iterate)
   }
 
   //Test only!
   private def singleIteration(connectionGraph: ConnectionGraph): ConnectionGraph = {
     val resolver = new MediatorTransportIssueResolver(connectionGraph)
-    resolver.transform(resolver.foundCycle)
+    resolver.iterate
   }
   override protected def buildConnectionGraph(connections: Vector[Connection]): ConnectionGraph = {
     val totalSupply = connections.map(_.supplier).distinct.map(_.supply).sum

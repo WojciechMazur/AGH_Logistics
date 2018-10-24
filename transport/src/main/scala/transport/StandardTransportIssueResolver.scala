@@ -15,7 +15,7 @@ case class StandardTransportIssueResolver(connectionGraph: ConnectionGraph) exte
     case SimpleConnection(supplier, recipient, attributes) =>
       (nodeDeltaFactors.get(supplier) ++ nodeDeltaFactors.get(recipient) ++ Some(attributes.transportCost)).sum
   }
-  override protected def isOptimal: Boolean = optimalityFactors.forall(_.optimalityFactor >= 0 || foundCycle.isEmpty)
+  override protected def isOptimal: Boolean = optimalityFactors.forall(_.optimalityFactor >= 0 || optCycle.isEmpty)
 }
 
 object StandardTransportIssueResolver extends TransportIssueResolverProvider {
@@ -27,13 +27,15 @@ object StandardTransportIssueResolver extends TransportIssueResolverProvider {
     val resolver = new StandardTransportIssueResolver(connectionGraph)
     if (resolver.isOptimal) {
       resolver.connectionGraph
-    } else StandardTransportIssueResolver(resolver.transform(resolver.foundCycle))
+    } else {
+      StandardTransportIssueResolver(resolver.iterate)
+    }
   }
 
   //Test only!
   private def singleIteration(connectionGraph: ConnectionGraph): ConnectionGraph = {
     val resolver = new StandardTransportIssueResolver(connectionGraph)
-    resolver.transform(resolver.foundCycle)
+    resolver.iterate
   }
   override def buildConnectionGraph(connections: Vector[Connection]): ConnectionGraph = {
     val totalSupply = connections.map(_.supplier).distinct.map(_.supply).sum

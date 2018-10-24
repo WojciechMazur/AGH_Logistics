@@ -13,14 +13,14 @@ trait TransportIssueResolverProvider {
   private final def disposeInitialLoad(graph: ConnectionGraph): ConnectionGraph = {
     val connections = initOrder match {
       case MinValue => graph.sortedConnections
-      case MaxValue => graph.reverseSortedConntections
+      case MaxValue => graph.reverseSortedConnections
     }
     val result = connections.foldLeft(graph) {
       case (accGraph, connection) =>
-        val actualConnection      = accGraph.find(connection.supplier, connection.recipient)
-        val (supplier, recipient) = (actualConnection.supplier, actualConnection.recipient)
-        val transfer              = recipient.demand - recipient.available
-        accGraph.updated(supplier, recipient, transfer)
+        val actualConnection = accGraph.find(connection.supplier, connection.recipient)
+        val recipient        = actualConnection.recipient
+        val transfer         = recipient.demand - recipient.available
+        accGraph.updated(actualConnection, transfer)
     }
     result
   }
