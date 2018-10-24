@@ -4,8 +4,6 @@ import breeze.linalg.{ DenseMatrix, DenseVector }
 import transport.TransportIssueResolverProvider.{ MaxValue, MinValue }
 import transport.model._
 
-import scala.util.Try
-
 trait TransportIssueResolver {
   type ConnectionType <: Connection
   def connectionGraph: ConnectionGraph
@@ -13,6 +11,13 @@ trait TransportIssueResolver {
   protected def optimalityFn(connection:     ConnectionType):  Double
   protected def isOptimal: Boolean
   val transportIssueResolverProvider: TransportIssueResolverProvider
+
+  final def iterate: ConnectionGraph = {
+    optCycle match {
+      case Some(cycle) => cycle.transform(connectionGraph)
+      case None        => connectionGraph
+    }
+  }
 
   private val connections = connectionGraph.connections.asInstanceOf[Seq[ConnectionType]]
   private val nonZeroConnections: Seq[ConnectionType] = connectionGraph.connections
@@ -75,79 +80,19 @@ trait TransportIssueResolver {
     }
   }
 
-  private def fullfilsCycleCondition(optimalityFactor: Double): Boolean = {
+  private def fulfillsCycleCondition(optimalityFactor: Double): Boolean = {
     transportIssueResolverProvider.initOrder match {
       case MinValue => optimalityFactor < 0
       case MaxValue => optimalityFactor > 0
     }
   }
 
-  private def findCycle(n: Int): Option[Cycle] = {
-    sortedConnectionsFactors(n) match {
-      case ConnectionOptimality(_, optimalityFactor) if !fullfilsCycleCondition(optimalityFactor) =>
-        None
-      case ConnectionOptimality(initialConnection, _) =>
-        val recipients = nonZeroConnections
-          .filter(_.supplier == initialConnection.supplier)
-          .map(_.recipient)
+  protected lazy val optCycle: Option[Cycle] = Cycle.find(
+    sortedConnectionsFactors
+      .filter(co => fulfillsCycleCondition(co.optimalityFactor))
+      .map(_.connection)
+      .toList,
+    nonZeroConnections.toList
+  )()
 
-        val suppliers = nonZeroConnections
-          .filter(_.recipient == initialConnection.recipient)
-          .map(_.supplier)
-
-        val corner = nonZeroConnections.find(c => suppliers.contains(c.supplier) && recipients.contains(c.recipient))
-
-        val possibleConnections = corner
-          .map { corner =>
-            nonZeroConnections.filter(c => c != corner && c != initialConnection)
-          }
-          .getOrElse(Seq.empty)
-
-        val horizontal = corner.flatMap(
-          corner =>
-            possibleConnections
-              .find(c => c.recipient == corner.recipient && c.supplier == initialConnection.supplier)
-        )
-        val vertical = corner.flatMap(
-          corner =>
-            possibleConnections
-              .find(c => c.recipient == initialConnection.recipient && c.supplier == corner.supplier)
-        )
-
-        Try(Cycle(initialConnection, vertical.get, corner.get, horizontal.get)).toOption
-          .orElse(findCycle(n + 1))
-    }
-  }
-
-  protected lazy val foundCycle: Option[Cycle] = findCycle(0)
-
-  protected def transform(cycleOpt: Option[Cycle]) =
-    cycleOpt
-      .map { cycle =>
-        val transfer = Math.min(cycle.vertical.units, cycle.horizontal.units)
-
-        val updatedConnections = Seq(
-          cycle.initial.withUnits(cycle.initial.units + transfer),
-          cycle.vertical.withUnits(cycle.vertical.units - transfer),
-          cycle.corner.withUnits(cycle.corner.units + transfer),
-          cycle.horizontal.withUnits(cycle.horizontal.units - transfer)
-        )
-
-        val appliedCycleConnections =
-          updatedConnections.foldLeft(connectionGraph.connections) {
-            case (accConnections, update) =>
-              accConnections.updated(
-                accConnections.indexWhere(c => c.recipient == update.recipient && c.supplier == update.supplier),
-                update
-              )
-          }
-        assert(
-          appliedCycleConnections
-            .map(_.units)
-            .sum == connectionGraph.connections.map(_.units).sum,
-          "Total amount has changed"
-        )
-        connectionGraph.copy(connections = appliedCycleConnections)
-      }
-      .getOrElse(connectionGraph)
 }

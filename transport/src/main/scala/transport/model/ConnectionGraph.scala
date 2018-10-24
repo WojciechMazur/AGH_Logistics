@@ -9,8 +9,10 @@ case class ConnectionGraph(
   virtualSupplier:  VirtualSupplier = VirtualSupplier(0),
   virtualRecipient: VirtualRecipient = VirtualRecipient(0)
 ) {
+  lazy val totalSupply:       Double          = connections.map(_.supplier).distinct.map(_.supply).sum
+  lazy val totalDemand:       Double          = connections.map(_.recipient).distinct.map(_.demand).sum
   lazy val sortedConnections: Seq[Connection] = connections.sorted
-  lazy val reverseSortedConntections: Seq[Connection] = {
+  lazy val reverseSortedConnections: Seq[Connection] = {
     val (real, virtual) =
       connections
         .map(c => (c, (c.supplier, c.recipient)))
@@ -34,16 +36,13 @@ case class ConnectionGraph(
     connections
       .indexWhere(c => c.supplier == supplier && c.recipient == recipient)
 
-  def updated(supplier: Supplier, recipient: Recipient, amount: Double): ConnectionGraph = {
-    val transfer = if (amount > 0) {
-      Math.min(amount, supplier.available)
-    } else {
-      Math.min(amount, recipient.available)
-    }
-
-    val newSupplier  = supplier.copy(available  = supplier.available - transfer)
-    val newRecipient = recipient.copy(available = recipient.available + transfer)
-
+  private def syncNodes(
+    supplier:     Supplier,
+    newSupplier:  Supplier,
+    recipient:    Recipient,
+    newRecipient: Recipient,
+    transfer:     Double
+  ): ConnectionGraph = {
     val updatedConnections = connections.map { connection =>
       (connection.supplier, connection.recipient) match {
         case (`supplier`, `recipient`) =>
@@ -76,6 +75,25 @@ case class ConnectionGraph(
         case _ => virtualSupplier
       }
     )
+  }
+
+  def updatedByCycle(connection: Connection, amount: Double): ConnectionGraph = {
+    val (supplier, recipient) = (connection.supplier, connection.recipient)
+    syncNodes(supplier, supplier, recipient, recipient, amount)
+  }
+
+  def updated(connection: Connection, amount: Double): ConnectionGraph = {
+    val (supplier, recipient) = (connection.supplier, connection.recipient)
+    val transfer = if (amount > 0) {
+      Math.min(amount, supplier.available)
+    } else {
+      Math.min(amount, recipient.available)
+    }
+    val (newSupplier, newRecipient) = (
+      supplier.copy(available  = supplier.available - transfer),
+      recipient.copy(available = recipient.available + transfer)
+    )
+    syncNodes(supplier, newSupplier, recipient, newRecipient, transfer)
   }
 
   def resolve: ConnectionGraph = connections.head match {

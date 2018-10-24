@@ -71,9 +71,9 @@ class MediatorTransportIssueResolverSpec
           .sortBy(c => (c.supplier.name, c.recipient.name))
           .map(_.units) == Seq(
           //@formatter:off
-          0.0, 0.0, 20.0, 0.0,
-          10.0, 20.0, 0.0, 0.0,
-          0.0, 8.0, 7.0, 50.0
+          10.0, 0.0, 10.0, 0.0,
+          0.0, 28.0, 0.0, 2.0,
+          0.0, 0.0, 17.0, 48.0
           //@formatter:on
         )
       }
