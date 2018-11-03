@@ -25,7 +25,7 @@ trait TransportIssueResolver {
     .asInstanceOf[Seq[ConnectionType]]
 
   protected lazy val (baseSuppliers, baseRecipients) = nonZeroConnections
-    .foldLeft((List.empty[Supplier], List.empty[Recipient])) {
+    .foldLeft((List.empty[SupplierNode], List.empty[RecipientNode])) {
       case ((suppliers, recipients), connection) =>
         (
           suppliers :+ connection.supplier,

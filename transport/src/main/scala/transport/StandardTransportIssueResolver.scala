@@ -12,7 +12,7 @@ case class StandardTransportIssueResolver(connectionGraph: ConnectionGraph) exte
   override def dualityCriteriaFn(nonEmptyConnections: Seq[Connection]): Seq[Double] =
     nonEmptyConnections.map(-_.totalCost)
   override protected def optimalityFn(connection: SimpleConnection): Double = connection match {
-    case SimpleConnection(supplier, recipient, attributes) =>
+    case SimpleConnection(_, supplier, recipient, attributes) =>
       (nodeDeltaFactors.get(supplier) ++ nodeDeltaFactors.get(recipient) ++ Some(attributes.transportCost)).sum
   }
   override protected def isOptimal: Boolean = optimalityFactors.forall(_.optimalityFactor >= 0 || optCycle.isEmpty)
