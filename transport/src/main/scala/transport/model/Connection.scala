@@ -11,9 +11,9 @@ sealed trait Connection {
   def units:     Double = attributes.units
   def totalCost: Double = attributes.totalCosts
 
-  def supplier_=(supplierNode: SupplierNode): Connection
+  def supplier_=(supplierNode:   SupplierNode):  Connection
   def recipient_=(recipientNode: RecipientNode): Connection
-  def units_=(units: Double):Connection
+  def units_=(units:             Double):        Connection
 
   override def equals(obj: Any): Boolean = obj match {
     case connection: Connection ⇒ this.id == connection.id
@@ -104,9 +104,9 @@ case class MediatorConnection(
 ) extends Connection {
   override type AttributesType = MediatorConnectionAttributes
   override def targetFn: Double = attributes.units * (attributes.totalProfits - attributes.totalCosts)
-  override def supplier_=(supplierNode:   SupplierNode):  Connection = copy(supplier = supplierNode)
+  override def supplier_=(supplierNode:   SupplierNode): Connection = copy(supplier = supplierNode)
   override def recipient_=(recipientNode: RecipientNode): Connection = copy(recipient = recipientNode)
-  override def units_=(units: Double): Connection = copy(
+  override def units_=(units:             Double): Connection = copy(
     attributes = attributes.copy(
       units = units
     )
