@@ -66,7 +66,7 @@ class ConnectionsManager extends React.Component<Props, State> {
                                 <TableCell component="th" scope="row">{elem.supplier.name}</TableCell>
                                 <TableCell>{elem.recipient.name}</TableCell>
                                 <TableCell numeric>{elem.attributes['units']}</TableCell>
-                                <TableCell numeric>{elem.attributes.transportCost || "None"}</TableCell>
+                                <TableCell numeric>{elem.attributes.unitTransportCost || "None"}</TableCell>
                                 <TableCell numeric>{elem.attributes.priority || "None"}</TableCell>
                                 <TableCell numeric>{elem.attributes.limit || "None"}</TableCell>
                             </TableRow>
@@ -85,9 +85,10 @@ class ConnectionsManager extends React.Component<Props, State> {
                     <TableRow>
                         <TableCell/>
                         {this.props.recipients.map(recipient =>
-                            <TableCell className={this.props.classes.tableCell} key={"Recipient-" + recipient.id} numeric>
+                            <TableCell className={this.props.classes.tableCell} key={"Recipient-" + recipient.id}
+                                       numeric>
                                 <b>{recipient.name}</b> [{recipient.demand}]
-                                </TableCell>
+                            </TableCell>
                         )}
                     </TableRow>
                 </TableHead>
@@ -95,20 +96,23 @@ class ConnectionsManager extends React.Component<Props, State> {
                     {this.props.suppliers.map(supplier =>
                         <TableRow key={supplier.id}>
                             <TableCell key={"Supplier-" + supplier.id}>
-                                    <b>{supplier.name}</b> [{supplier.supply}]
+                                <b>{supplier.name}</b> [{supplier.supply}]
                             </TableCell>
                             {this.props.recipients.map(recipient => {
                                 const connection = this.props.connections.find((connection) => connection.supplier.id === supplier.id && connection.recipient.id === recipient.id);
-                                return <TableCell className={this.props.classes.tableCell} key={supplier.name + '-' + recipient.name}
+                                return <TableCell className={this.props.classes.tableCell}
+                                                  key={supplier.name + '-' + recipient.name}
                                                   numeric>
                                     <Input className={this.props.classes.input} type={"number"}
                                            defaultValue={connection.attributes.units}
                                            onChange={(event) => this.props.dashboardRef.handleUpdateConnection(
                                                update(connection, {
-                                                   attributes: {$merge: {
-                                                           units: Math.max(event.target.value, 0)
+                                                       attributes: {
+                                                           $merge: {
+                                                               units: Math.max(event.target.value, 0)
+                                                           }
                                                        }
-                                                   }}
+                                                   }
                                                )
                                            )}
                                     />
@@ -128,26 +132,30 @@ class ConnectionsManager extends React.Component<Props, State> {
                     <TableRow>
                         <TableCell/>
                         {this.props.recipients.map(recipient =>
-                            <TableCell className={this.props.classes.tableCell} key={'Recipient-' + recipient.id} numeric>{recipient.name}</TableCell>
+                            <TableCell className={this.props.classes.tableCell} key={'Recipient-' + recipient.id}
+                                       numeric>{recipient.name}</TableCell>
                         )}
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {this.props.suppliers.map(supplier =>
                         <TableRow key={supplier.id}>
-                            <TableCell   key={'Supplier-' + supplier.id}>{supplier.name}</TableCell>
+                            <TableCell key={'Supplier-' + supplier.id}>{supplier.name}</TableCell>
                             {this.props.recipients.map(recipient => {
                                 const connection = this.props.connections.find((connection) => connection.supplier.id === supplier.id && connection.recipient.id === recipient.id);
-                                return <TableCell className={this.props.classes.tableCell} key={supplier.name + '-' + recipient.name}
+                                return <TableCell className={this.props.classes.tableCell}
+                                                  key={supplier.name + '-' + recipient.name}
                                                   numeric>
                                     <Input className={this.props.classes.input} type={"number"}
                                            defaultValue={connection.attributes.limit}
                                            onChange={(event) => this.props.dashboardRef.handleUpdateConnection(
                                                update(connection, {
-                                                   attributes: {$merge: {
-                                                           limit: Math.max(event.target.value, 0)
+                                                       attributes: {
+                                                           $merge: {
+                                                               limit: Math.max(event.target.value, 0)
+                                                           }
                                                        }
-                                                   }}
+                                                   }
                                                )
                                            )}
                                     />
@@ -167,25 +175,29 @@ class ConnectionsManager extends React.Component<Props, State> {
                     <TableRow>
                         <TableCell/>
                         {this.props.recipients.map(recipient =>
-                            <TableCell className={this.props.classes.tableCell} key={'Recipient-' + recipient.id} numeric>{recipient.name}</TableCell>
+                            <TableCell className={this.props.classes.tableCell} key={'Recipient-' + recipient.id}
+                                       numeric>{recipient.name}</TableCell>
                         )}
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {this.props.suppliers.map(supplier =>
                         <TableRow key={supplier.id}>
-                            <TableCell  key={'Supplier-' + supplier.id}>{supplier.name}</TableCell>
+                            <TableCell key={'Supplier-' + supplier.id}>{supplier.name}</TableCell>
                             {this.props.recipients.map(recipient => {
                                 const connection = this.props.connections.find((connection) => connection.supplier.id === supplier.id && connection.recipient.id === recipient.id);
-                                return <TableCell className={this.props.classes.tableCell} key={supplier.name + '-' + recipient.name} numeric >
+                                return <TableCell className={this.props.classes.tableCell}
+                                                  key={supplier.name + '-' + recipient.name} numeric>
                                     <Input className={this.props.classes.input} type={"number"}
-                                           defaultValue={connection.attributes.transportCost}
+                                           defaultValue={connection.attributes.unitTransportCost}
                                            onChange={(event) => this.props.dashboardRef.handleUpdateConnection(
                                                update(connection, {
-                                                   attributes: {$merge: {
-                                                    transportCost: Math.max(event.target.value, 0)
+                                                       attributes: {
+                                                           $merge: {
+                                                               unitTransportCost: Math.max(event.target.value, 0)
+                                                           }
+                                                       }
                                                    }
-                                                   }}
                                                )
                                            )}
                                     />
@@ -205,25 +217,29 @@ class ConnectionsManager extends React.Component<Props, State> {
                     <TableRow>
                         <TableCell/>
                         {this.props.recipients.map(recipient =>
-                            <TableCell className={this.props.classes.tableCell} key={'Recipient-' + recipient.id} numeric>{recipient.name}</TableCell>
+                            <TableCell className={this.props.classes.tableCell} key={'Recipient-' + recipient.id}
+                                       numeric>{recipient.name}</TableCell>
                         )}
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {this.props.suppliers.map(supplier =>
                         <TableRow key={supplier.id}>
-                            <TableCell  key={'Supplier-' + supplier.id}>{supplier.name}</TableCell>
+                            <TableCell key={'Supplier-' + supplier.id}>{supplier.name}</TableCell>
                             {this.props.recipients.map(recipient => {
                                 const connection = this.props.connections.find((connection) => connection.supplier.id === supplier.id && connection.recipient.id === recipient.id);
-                                return <TableCell className={this.props.classes.tableCell} key={supplier.name + '-' + recipient.name} numeric >
+                                return <TableCell className={this.props.classes.tableCell}
+                                                  key={supplier.name + '-' + recipient.name} numeric>
                                     <Input className={this.props.classes.input} type={"number"}
                                            defaultValue={connection.attributes.priority}
                                            onChange={(event) => this.props.dashboardRef.handleUpdateConnection(
                                                update(connection, {
-                                                   attributes: {$merge: {
-                                                           priority: event.target.value
+                                                       attributes: {
+                                                           $merge: {
+                                                               priority: event.target.value
+                                                           }
                                                        }
-                                                   }}
+                                                   }
                                                )
                                            )}
                                     />

@@ -51,8 +51,7 @@ object HttpEndpoint {
                   complete(result)
                 }
               }
-            }
-          } ~ path("transport" / "mediator") {
+            } ~ path("transport" / "mediator") {
             post {
               entity(as[List[MediatorConnection]]) { connections ⇒
                 val connectionGraph = MediatorTransportIssueResolver.init(connections.map(_.clean): _*)
@@ -64,6 +63,7 @@ object HttpEndpoint {
           }
         }
       }
+    }
     }
 
     val bindingFuture = Http().bindAndHandle(route, "0.0.0.0", 8080)

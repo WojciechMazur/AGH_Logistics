@@ -37,7 +37,8 @@ type Props = {
 
 type State = {
     currentTab: number,
-    isResolved: boolean
+    standardIsResolved: boolean,
+    mediatorIsResolved: boolean
 }
 
 export function TabContainer(props) {
@@ -53,7 +54,8 @@ class NodesTableTabs extends React.Component<Props, State> {
         super(props);
         this.state = {
             currentTab: TabNames.SUPPLIERS,
-            isResolved: false
+            standardIsResolved: false,
+            mediatorIsResolved: false
         };
     }
 
@@ -71,6 +73,7 @@ class NodesTableTabs extends React.Component<Props, State> {
                       <TableCell numeric>Supply</TableCell>
                       <TableCell numeric>Priority</TableCell>
                       <TableCell numeric>Limit</TableCell>
+                      <TableCell numeric>Purchase cost</TableCell>
                       <TableCell/>
                   </TableRow>
               </TableHead>
@@ -85,6 +88,7 @@ class NodesTableTabs extends React.Component<Props, State> {
                               <TableCell numeric>{elem.supply}</TableCell>
                               <TableCell numeric>{elem.priority || "None"}</TableCell>
                               <TableCell numeric>{elem.limit || "None"}</TableCell>
+                              <TableCell numeric>{elem.purchaseCost || "None"}</TableCell>
                               <TableCell>
                                   <div style={{display: "inline-flex"}}>
                                   <EditFormModal>
@@ -114,6 +118,7 @@ class NodesTableTabs extends React.Component<Props, State> {
                         <TableCell numeric>Demand</TableCell>
                         <TableCell numeric>Priority</TableCell>
                         <TableCell numeric>Limit</TableCell>
+                        <TableCell numeric>Selling price</TableCell>
                         <TableCell/>
                     </TableRow>
                 </TableHead>
@@ -128,6 +133,7 @@ class NodesTableTabs extends React.Component<Props, State> {
                                 <TableCell numeric>{elem.demand}</TableCell>
                                 <TableCell numeric>{elem.priority || "None"}</TableCell>
                                 <TableCell numeric>{elem.limit || "None"}</TableCell>
+                                <TableCell numeric>{elem.saleProfit || "None"}</TableCell>
                                 <TableCell>
                                     <div style={{display: "inline-flex"}}>
                                         <EditFormModal>
@@ -147,37 +153,69 @@ class NodesTableTabs extends React.Component<Props, State> {
         </Paper>
     };
 
+    calcMediatorProfit() {
+        return this.props.connections.map(c =>
+            c.attributes.units * (c.attributes.unitSaleProfit - c.attributes.unitPurchaseCost - c.attributes.unitTransportCost)
+        ).reduce((acc, x) => acc + x)
+    }
+
     calcTargetValue(){
-        return this.props.connections.map(c => c.attributes.units*c.attributes.transportCost).reduce((acc,x) => acc + x)
+        return this.props.connections.map(c => c.attributes.units*c.attributes.unitTransportCost).reduce((acc, x) => acc + x)
 
     }
-    handleResolveButton = () => {
 
-        if (this.props.connections.every(c => c.attributes.transportCost !== undefined)) {
-            fetch('http://localhost:8080/transport/standard', {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(this.props.connections)
-            }).then((value, err) => {
-                err && console.error(err);
-                if(value) {
-                    return value.json()
-                }
-                return [];
-            }).then((connections: Array<Connection>) => {
-                    this.props.dashboardRef.handleUpdateConnections(connections);
-                    this.setState({
-                        isResolved: true
-                    });
-                }
-            )
-        } else {
-            console.error("Not all connections are filled")
-        }
+    handleResolveMediatorButton() {
+        fetch('http://localhost:8080/transport/mediator', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(this.props.connections)
+        }).then((value, err) => {
+            err && console.error(err);
+            if (value) {
+                return value.json()
+            }
+            return [];
+        }).then((connections: Array<Connection>) => {
+                this.props.dashboardRef.handleUpdateConnections(connections);
+                this.setState({
+                    mediatorIsResolved: true
+                });
+            }
+        )
+    }
+
+    handleResolveButton = () => {
+        fetch('http://localhost:8080/transport/standard', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(this.props.connections)
+        }).then((value, err) => {
+            err && console.error(err);
+            if (value) {
+                return value.json()
+            }
+            return [];
+        }).then((connections: Array<Connection>) => {
+                this.props.dashboardRef.handleUpdateConnections(connections);
+                this.setState({
+                    standardIsResolved: true
+                });
+            }
+        )
     };
+
+    isReadyForStandardProblem = () => this.props.connections
+        .every(c => c.attributes.unitTransportCost && c.attributes.unitTransportCost !== 0);
+
+    isReadyForMediatorProblem = () => this.isReadyForStandardProblem() &&
+        this.props.suppliers.every(s => s.purchaseCost && s.purchaseCost !== 0) &&
+        this.props.recipients.every(r => r.saleProfit && r.saleProfit !== 0);
 
     render() {
         const {classes} = this.props;
@@ -200,21 +238,39 @@ class NodesTableTabs extends React.Component<Props, State> {
                 {currentTab === 2 && <TabContainer>
                     <ConnectionsManager {...this.props}/>
                 </TabContainer>}
+
                 <Paper square={true}>
                     <Button fullWidth={true}
                             variant="contained"
                             color="primary"
-                            onClick={()=> this.handleResolveButton()}>Resolve</Button>
+                            disabled={!this.isReadyForStandardProblem()}
+                            onClick={()=> this.handleResolveButton()}>Resolve standard problem</Button>
                     <br/>
-                    {this.state.isResolved &&
+                    {this.state.standardIsResolved &&
                         <Typography align="center" variant="h6">
-                        Target function: <strong>{this.calcTargetValue()}</strong>
+                        Target function of standard problem: <strong>{this.calcTargetValue()}</strong>
                         </Typography>
+                    }
+                </Paper>
+
+                <Paper square={true}>
+                    <Button fullWidth={true}
+                            variant="contained"
+                            color="primary"
+                            disabled={!this.isReadyForMediatorProblem()}
+                            onClick={()=> this.handleResolveMediatorButton()}>Resolve mediator problem</Button>
+                    <br/>
+                    {this.state.mediatorIsResolved &&
+                    <Typography align="center" variant="h6">
+                        Target function of mediator problem: <strong>{this.calcMediatorProfit().toString()}</strong>
+                    </Typography>
                     }
                 </Paper>
             </Paper>
         );
     }
+
+
 }
 
 const styles = {

@@ -1,6 +1,5 @@
 import * as React from 'react';
 import {Field, Form, Formik} from 'formik';
-import {LinearProgress} from '@material-ui/core';
 import {TextField} from 'formik-material-ui';
 import Dashboard from "../../../pages/transportDistribution/Dashboard";
 import {Recipient} from "../../../types";
@@ -23,7 +22,9 @@ export function RecipientEditForm(props: Props) {
             demand: props.recipient.demand,
             available: props.recipient.available || '',
             priority: props.recipient.priority ||'',
-            limit: props.recipient.limit || ''}}
+            limit: props.recipient.limit || '',
+            saleProfit: props.recipient.saleProfit || ''
+        }}
         validate={values => {
             const errors: Partial<Values> = {};
             if (!values.name) {
@@ -46,7 +47,8 @@ export function RecipientEditForm(props: Props) {
                     available: {$set: Math.min(values.available || props.recipient.available, values.demand || props.recipient.demand)},
                     priority: {$set: values.priority || props.recipient.priority},
                     limit: {$set: values.limit || props.recipient.limit},
-                    demand: {$set: values.demand || props.recipient.demand}
+                    demand: {$set: values.demand || props.recipient.demand},
+                    saleProfit: {$set: values.saleProfit || props.recipient.saleProfit}
                 })
             )
         }}
@@ -56,6 +58,7 @@ export function RecipientEditForm(props: Props) {
                     container
                     justify="center"
                     alignItems="center"
+                    spacing={24}
                 >
                     <Grid item xs>
                         <Field
@@ -98,8 +101,14 @@ export function RecipientEditForm(props: Props) {
                         />
                     </Grid>
                     <Grid item xs>
-                        {isSubmitting && <LinearProgress/>}
-                        <br/>
+                        <Field
+                            name="saleProfit"
+                            type="number"
+                            label="Unit sale profit"
+                            component={TextField}
+                        />
+                    </Grid>
+                    <Grid item xs>
                         <Button
                             variant="contained"
                             color="primary"

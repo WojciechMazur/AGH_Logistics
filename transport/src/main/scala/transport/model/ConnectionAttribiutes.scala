@@ -15,12 +15,12 @@ sealed trait ConnectionAttributes {
 }
 
 case class SimpleConnectionAttributes(
-  transportCost: Double,
+  unitTransportCost: Double,
   units:         Double = 0.0,
   limit:         Option[Double] = None,
   priority:      Option[Int] = None
 ) extends ConnectionAttributes {
-  override def totalCosts: Double = transportCost
+  override def totalCosts: Double = unitTransportCost
 }
 
 case class MediatorConnectionAttributes(

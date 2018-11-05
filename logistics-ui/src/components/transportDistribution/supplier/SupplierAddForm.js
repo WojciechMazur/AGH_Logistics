@@ -11,9 +11,10 @@ import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 
 export interface Values {
     name: string;
-    available?: number,
-    supply?: number,
-    limit?: number
+    supply: number,
+    available: ?number,
+    limit: ?number,
+    purchaseCost: ?number
 }
 
 type Props ={
@@ -24,7 +25,7 @@ function SupplierAddForm(props: Props) {
     const {classes} = props;
 
     return <Formik
-        initialValues={{name: '', supply: '', available: '', limit: '', priority: ''}}
+        initialValues={{name: '', supply: '', available: '', limit: '', priority: '', purchaseCost: ''}}
         validate={values => {
             const errors: Partial<Values> = {};
             if (!values.name) {
@@ -46,7 +47,8 @@ function SupplierAddForm(props: Props) {
                 values.available || values.supply,
                 values.priority,
                 values.limit,
-                values.supply
+                values.supply,
+                values.purchaseCost
             ));
         }}
         render={({submitForm, isSubmitting}) => (
@@ -56,13 +58,13 @@ function SupplierAddForm(props: Props) {
                     container
                     justify="center"
                     alignItems="center"
-                    spacing={24}
+                    spacing={16}
                 >
                     <Grid item xs>
                         <Field
                             name="name"
                             type="text"
-                            label="Supplier name"
+                            label="Supplier name*"
                             component={TextField}
                         />
                     </Grid>
@@ -70,7 +72,7 @@ function SupplierAddForm(props: Props) {
                         <Field
                             name="supply"
                             type="number"
-                            label="Maximal supply"
+                            label="Maximal supply*"
                             component={TextField}
                         />
                     </Grid>
@@ -99,6 +101,14 @@ function SupplierAddForm(props: Props) {
                         />
                     </Grid>
                     <Grid item xs>
+                        <Field
+                            name="purchaseCost"
+                            type="number"
+                            label="Unit purchase cost"
+                            component={TextField}
+                        />
+                    </Grid>
+                    <Grid item xs>
                         {isSubmitting && <LinearProgress/>}
                         <br/>
                         <Button
@@ -119,6 +129,7 @@ function SupplierAddForm(props: Props) {
 const styles = theme => ({
   root:{
       padding: theme.spacing.unit * 2,
+      flexGrow: 1
   },
 
 });

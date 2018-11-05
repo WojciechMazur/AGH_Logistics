@@ -13,7 +13,8 @@ export interface Values {
     name: string;
     available?: number,
     demand?: number,
-    limit?: number
+    limit?: number,
+    saleProfit: ?number
 }
 
 type Props ={
@@ -24,7 +25,7 @@ function RecipientAddForm(props: Props) {
     const {classes} = props;
 
     return <Formik
-        initialValues={{name: '', demand: '', available: '', limit: '', priority: ''}}
+        initialValues={{name: '', demand: '', available: '', limit: '', priority: '', saleProfit: ''}}
         validate={values => {
             const errors: Partial<Values> = {};
             if (!values.name) {
@@ -46,7 +47,8 @@ function RecipientAddForm(props: Props) {
                 values.available || 0,
                 values.priority,
                 values.limit,
-                values.demand
+                values.demand,
+                values.saleProfit
             ))
         }}
         render={({submitForm, isSubmitting}) => (
@@ -62,7 +64,7 @@ function RecipientAddForm(props: Props) {
                         <Field
                             name="name"
                             type="text"
-                            label="Recipient name"
+                            label="Recipient name *"
                             component={TextField}
                         />
                     </Grid>
@@ -70,7 +72,7 @@ function RecipientAddForm(props: Props) {
                         <Field
                             name="demand"
                             type="number"
-                            label="Maximal demand"
+                            label="Maximal demand *"
                             component={TextField}
                         />
                     </Grid>
@@ -95,6 +97,14 @@ function RecipientAddForm(props: Props) {
                             name="priority"
                             type="number"
                             label="Recipient priority"
+                            component={TextField}
+                        />
+                    </Grid>
+                    <Grid item xs>
+                        <Field
+                            name="saleProfit"
+                            type="number"
+                            label="Unit sale profit"
                             component={TextField}
                         />
                     </Grid>

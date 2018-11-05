@@ -70,7 +70,7 @@ case class SimpleConnection(
   attributes: SimpleConnectionAttributes
 ) extends Connection {
   override type AttributesType = SimpleConnectionAttributes
-  override def targetFn: Double = attributes.transportCost * attributes.units
+  override def targetFn: Double = attributes.unitTransportCost * attributes.units
   override def supplier_=(supplierNode:   Supplier): Connection = copy(supplier = supplierNode)
   override def recipient_=(recipientNode: Recipient): Connection = copy(recipient = recipientNode)
   override def units_=(units:             Double): Connection =

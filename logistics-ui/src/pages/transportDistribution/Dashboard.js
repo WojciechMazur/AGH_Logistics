@@ -112,29 +112,29 @@ const mockNodes: {
     recipients: Array<Recipient>
 } = {
     suppliers: [
-        new Supplier("A",null, null,null, 50),
-        new Supplier("B",null, null,null, 70),
-        new Supplier("C",null, null,null, 30)
+        new Supplier("A",null, null,null, 50, 5),
+        new Supplier("B",null, null,null, 70, 15),
+        new Supplier("C",null, null,null, 30, 20)
     ],
     recipients: [
-        new Recipient("R1", null, null, null, 20),
-        new Recipient("R2", null, null, null, 40),
-        new Recipient("R3", null, null, null, 90),
+        new Recipient("R1", null, null, null, 20, 27),
+        new Recipient("R2", null, null, null, 40, 21),
+        new Recipient("R3", null, null, null, 90, 17),
     ]
 };
 
 const mockConnections: Array<SimpleConnection> = [
-    new SimpleConnection(mockNodes.suppliers[0], mockNodes.recipients[0], new ConnectionAttributes(0,null,null, 3)),
-    new SimpleConnection(mockNodes.suppliers[0], mockNodes.recipients[1], new ConnectionAttributes(0,null,null, 5)),
-    new SimpleConnection(mockNodes.suppliers[0], mockNodes.recipients[2], new ConnectionAttributes(0,null,null, 7)),
+    new SimpleConnection(mockNodes.suppliers[0], mockNodes.recipients[0], new ConnectionAttributes(0,null,null, 3, mockNodes.suppliers[0].purchaseCost, mockNodes.recipients[0].saleProfit)),
+    new SimpleConnection(mockNodes.suppliers[0], mockNodes.recipients[1], new ConnectionAttributes(0,null,null, 5, mockNodes.suppliers[0].purchaseCost, mockNodes.recipients[1].saleProfit )),
+    new SimpleConnection(mockNodes.suppliers[0], mockNodes.recipients[2], new ConnectionAttributes(0,null,null, 7, mockNodes.suppliers[0].purchaseCost, mockNodes.recipients[2].saleProfit )),
 
-    new SimpleConnection(mockNodes.suppliers[1], mockNodes.recipients[0], new ConnectionAttributes(0,null,null, 12)),
-    new SimpleConnection(mockNodes.suppliers[1], mockNodes.recipients[1], new ConnectionAttributes(0,null,null, 10)),
-    new SimpleConnection(mockNodes.suppliers[1], mockNodes.recipients[2], new ConnectionAttributes(0,null,null, 9)),
+    new SimpleConnection(mockNodes.suppliers[1], mockNodes.recipients[0], new ConnectionAttributes(0,null,null, 12, mockNodes.suppliers[1].purchaseCost, mockNodes.recipients[0].saleProfit)),
+    new SimpleConnection(mockNodes.suppliers[1], mockNodes.recipients[1], new ConnectionAttributes(0,null,null, 10, mockNodes.suppliers[1].purchaseCost, mockNodes.recipients[1].saleProfit)),
+    new SimpleConnection(mockNodes.suppliers[1], mockNodes.recipients[2], new ConnectionAttributes(0,null,null, 9 , mockNodes.suppliers[1].purchaseCost, mockNodes.recipients[2].saleProfit)),
 
-    new SimpleConnection(mockNodes.suppliers[2], mockNodes.recipients[0], new ConnectionAttributes(0,null,null, 13)),
-    new SimpleConnection(mockNodes.suppliers[2], mockNodes.recipients[1], new ConnectionAttributes(0,null,null, 3)),
-    new SimpleConnection(mockNodes.suppliers[2], mockNodes.recipients[2], new ConnectionAttributes(0,null,null, 9)),
+    new SimpleConnection(mockNodes.suppliers[2], mockNodes.recipients[0], new ConnectionAttributes(0,null,null, 13, mockNodes.suppliers[2].purchaseCost, mockNodes.recipients[0].saleProfit)),
+    new SimpleConnection(mockNodes.suppliers[2], mockNodes.recipients[1], new ConnectionAttributes(0,null,null, 3 , mockNodes.suppliers[2].purchaseCost, mockNodes.recipients[1].saleProfit)),
+    new SimpleConnection(mockNodes.suppliers[2], mockNodes.recipients[2], new ConnectionAttributes(0,null,null, 9 , mockNodes.suppliers[2].purchaseCost, mockNodes.recipients[2].saleProfit))
 ];
 
 class Dashboard extends React.Component<Props, State> {
@@ -156,7 +156,9 @@ class Dashboard extends React.Component<Props, State> {
                         0,
                         Math.max(supplier.limit || 0, recipient.limit || 0),
                         Math.max(supplier.priority || 0, recipient.priority || 0),
-                        0))
+                        0,
+                        supplier.purchaseCost,
+                        recipient.saleProfit))
                 );
             this.setState((prevState) => ({
                 suppliers: update(prevState.suppliers, {$push: [supplier]}),
@@ -176,7 +178,9 @@ class Dashboard extends React.Component<Props, State> {
                             0,
                             Math.max(supplier.limit || 0, recipient.limit || 0),
                             Math.max(supplier.priority || 0, recipient.priority || 0),
-                            0))
+                            0,
+                            supplier.purchaseCost,
+                            recipient.saleProfit))
                 );
             this.setState((prevState) => ({
                 recipients: update(prevState.recipients, {$push: [recipient]}),
@@ -194,21 +198,52 @@ class Dashboard extends React.Component<Props, State> {
     handleUpdateConnections = (conn: Array<Connection>) => {
         const connections = conn
             .map(c => c.SimpleConnection || c.MediatorConnection)
+            .map(c => {
+                // $FlowFixMe
+                const purchaseCost = this.state.suppliers.find(s => s.id === c.supplier.id).purchaseCost;
+                // $FlowFixMe
+                const saleProfit = this.state.recipients.find(r => r.id === c.recipient.id).saleProfit;
+                // $FlowFixMe
+                const transportCost = this.state.connections.find(cc => cc.id === c.id).attributes.unitTransportCost;
+                return update(c, {
+                    supplier: {
+                        $merge: {
+                            purchaseCost: purchaseCost
+                        }
+                    },
+                    recipient: {
+                        $merge: {
+                            saleProfit: saleProfit
+                        }
+                    },
+                    attributes: {
+                        $merge: {
+                            unitTransportCost: transportCost,
+                            unitPurchaseCost: purchaseCost,
+                            unitSaleProfit: saleProfit
+                        }
+                    }
+                })
+            });
 
         const suppliers = connections
             .map(c => c.supplier)
             .filter((value, index, self) => self.map(c => c.id).indexOf(value.id) === index)
-            .sort((x,y) => x.name.localeCompare(y.name));
+            .sort((x, y) => x.name.localeCompare(y.name));
+
         const recipients = connections
             .map(c => c.recipient)
             .filter((value, index, self) => self.map(c => c.id).indexOf(value.id) === index)
-            .sort((x,y) => x.name.localeCompare(y.name));
-
-        this.setState({
-            connections: connections,
-            suppliers: suppliers,
-            recipients: recipients
-        })
+            .sort((x, y) => x.name.localeCompare(y.name));
+        this.setState(
+            update(this.state, {
+                    $merge: {
+                        connections: connections,
+                        suppliers: suppliers,
+                        recipients: recipients
+                    }
+                },
+            ))
     };
 
     handleRemoveSupplier = (supplier: Supplier) => {
@@ -228,6 +263,7 @@ class Dashboard extends React.Component<Props, State> {
                         return update(connection, {
                             $merge: {supplier: supplier},
                             attributes: {$merge: {
+                                purchaseCost: supplier.purchaseCost,
                                 priority: Math.max(supplier.priority || 0, connection.attributes.priority || 0)
                                 }}
                         })}else{
@@ -253,6 +289,7 @@ class Dashboard extends React.Component<Props, State> {
                     return update(connection, {
                         $merge: {recipient: recipient},
                         attributes: {$merge: {
+                                saleProfit: recipient.saleProfit,
                                 priority: Math.max(recipient.priority || 0, connection.attributes.priority || 0)
                             }}
                     })}else{
