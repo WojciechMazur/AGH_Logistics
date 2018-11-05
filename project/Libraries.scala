@@ -2,28 +2,38 @@ import sbt._
 
 object Libraries {
   object Versions {
-    lazy val breeze = "0.13.2"
-    lazy val scalatest = "3.0.5"
+    lazy val akka            = "2.5.17"
+    lazy val akkaHttp        = "10.1.5"
+    lazy val akkaHttpCirce   = "1.22.0"
+    lazy val akkaHttpCors    = "0.3.1"
+    lazy val breeze          = "0.13.2"
+    lazy val circe           = "0.10.0"
+    lazy val circeDerivation = "0.10.0-M1"
+    lazy val scalatest       = "3.0.5"
   }
-  
+
   lazy val breezze: Seq[ModuleID] = Seq(
-    // Last stable release
-    "org.scalanlp" %% "breeze" % Versions.breeze,
-
-    // Native libraries are not included by default. add this if you want them (as of 0.7)
-    // Native libraries greatly improve performance, but increase jar sizes. 
-    // It also packages various blas implementations, which have licenses that may or may not
-    // be compatible with the Apache License. No GPL code, as best I know.
-    "org.scalanlp" %% "breeze-natives" % Versions.breeze,
-
-    // The visualization library is distributed separately as well.
-    // It depends on LGPL code
-    "org.scalanlp" %% "breeze-viz" % Versions.breeze
+    "org.scalanlp" %% "breeze" % Versions.breeze
+//    "org.scalanlp" %% "breeze-natives" % Versions.breeze
   )
-  
+
+  lazy val circe: Seq[ModuleID] = Seq(
+    "io.circe" %% "circe-core" % Versions.circe,
+    "io.circe" %% "circe-generic" % Versions.circe,
+    "io.circe" %% "circe-parser" % Versions.circe,
+    "io.circe" %% "circe-derivation" % Versions.circeDerivation
+  )
+
+  lazy val akka: Seq[ModuleID] = Seq(
+    "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
+    "com.typesafe.akka" %% "akka-stream" % Versions.akka,
+    "ch.megard" %% "akka-http-cors" % Versions.akkaHttpCors,
+    "de.heikoseeberger" %% "akka-http-circe" % Versions.akkaHttpCirce
+  )
+
   lazy val scalatest: Seq[ModuleID] = Seq(
     "org.scalactic" %% "scalactic" % Versions.scalatest,
-    "org.scalatest" %% "scalatest" % Versions.scalatest % "test",
+    "org.scalatest" %% "scalatest" % Versions.scalatest % "test"
   )
-  
+
 }

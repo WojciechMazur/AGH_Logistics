@@ -6,19 +6,19 @@ import scala.language.postfixOps
 
 case class ConnectionGraph(
   connections:      Seq[Connection],
-  virtualSupplier:  VirtualSupplier = VirtualSupplier(0),
-  virtualRecipient: VirtualRecipient = VirtualRecipient(0)
+  virtualSupplier:  Supplier with VirtualNode= VirtualSupplier(0),
+  virtualRecipient: Recipient with VirtualNode = VirtualRecipient(0)
 ) {
-  lazy val totalSupply:       Double          = connections.map(_.supplier).distinct.map(_.supply).sum
-  lazy val totalDemand:       Double          = connections.map(_.recipient).distinct.map(_.demand).sum
+  lazy val totalSupply:       Double          = connections.filterNot(_.isVirtual).map(_.supplier).distinct.map(_.supply).sum
+  lazy val totalDemand:       Double          = connections.filterNot(_.isVirtual).map(_.recipient).distinct.map(_.demand).sum
   lazy val sortedConnections: Seq[Connection] = connections.sorted
   lazy val reverseSortedConnections: Seq[Connection] = {
     val (real, virtual) =
       connections
         .map(c => (c, (c.supplier, c.recipient)))
         .partition {
-          case (_, (_:    VirtualSupplier, _)) => false
-          case (_, (_, _: VirtualRecipient))   => false
+          case (_, (_:    VirtualNode, _)) => false
+          case (_, (_, _: VirtualNode))   => false
           case _ => true
         } match {
         case (realTuples, virtualTuples) =>
@@ -29,7 +29,7 @@ case class ConnectionGraph(
 
   def find(supplier: Supplier, recipient: Recipient): Connection =
     connections
-      .find(conn => conn.supplier.name == supplier.name && conn.recipient.name == recipient.name)
+      .find(conn => conn.supplier.id == supplier.id && conn.recipient.id == recipient.id)
       .get
 
   def indexOf(supplier: Supplier, recipient: Recipient): Int =
@@ -46,34 +46,25 @@ case class ConnectionGraph(
     val updatedConnections = connections.map { connection =>
       (connection.supplier, connection.recipient) match {
         case (`supplier`, `recipient`) =>
-          (connection match {
-            case c: SimpleConnection   => c.copy(newSupplier, newRecipient)
-            case c: MediatorConnection => c.copy(newSupplier, newRecipient)
-          }).withUnits(connection.units + transfer)
-        case (`supplier`, _) =>
-          connection match {
-            case c: SimpleConnection   => c.copy(newSupplier)
-            case c: MediatorConnection => c.copy(newSupplier)
-          }
-        case (_, `recipient`) =>
-          connection match {
-            case c: SimpleConnection   => c.copy(recipient = newRecipient)
-            case c: MediatorConnection => c.copy(recipient = newRecipient)
-          }
-        case (_, _) => connection
+          connection
+            .supplier(newSupplier)
+            .recipient(newRecipient)
+            .units(connection.units + transfer)
+        case (`supplier`, _)  => connection.supplier = newSupplier
+        case (_, `recipient`) => connection.recipient = newRecipient
+        case (_, _)           => connection
       }
     }
 
+    val newVirtualSupplier: Supplier with VirtualNode =
+      if (newSupplier.isVirtual) { newSupplier.asInstanceOf[Supplier with VirtualNode] } else virtualSupplier
+    val newVirtualRecipient: Recipient with VirtualNode =
+      if (newRecipient.isVirtual) { newRecipient.asInstanceOf[Recipient with VirtualNode] } else virtualRecipient
+
     copy(
       connections = updatedConnections,
-      virtualRecipient = newRecipient match {
-        case r: VirtualRecipient => r
-        case _ => virtualRecipient
-      },
-      virtualSupplier = newSupplier match {
-        case s: VirtualSupplier => s
-        case _ => virtualSupplier
-      }
+      newVirtualSupplier,
+      newVirtualRecipient
     )
   }
 
@@ -89,16 +80,18 @@ case class ConnectionGraph(
     } else {
       Math.min(amount, recipient.available)
     }
-    val (newSupplier, newRecipient) = (
-      supplier.copy(available  = supplier.available - transfer),
-      recipient.copy(available = recipient.available + transfer)
+
+
+    val (newSupplier: Supplier, newRecipient: Recipient) = (
+      supplier.withAvailableDelta(-transfer),
+      recipient.withAvailableDelta(transfer)
     )
     syncNodes(supplier, newSupplier, recipient, newRecipient, transfer)
   }
 
   def resolve: ConnectionGraph = connections.head match {
-    case SimpleConnection(_, _, _)   => StandardTransportIssueResolver(this)
-    case MediatorConnection(_, _, _) => MediatorTransportIssueResolver(this)
+    case SimpleConnection(_, _, _, _)   => StandardTransportIssueResolver(this)
+    case MediatorConnection(_, _, _, _) => MediatorTransportIssueResolver(this)
   }
 
   def target: Double = connections.map(_.targetFn).sum

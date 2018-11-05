@@ -4,11 +4,13 @@ import org.scalatest.{Matchers, PrivateMethodTester, WordSpec}
 class ConnectionSpec extends WordSpec
     with Matchers
     with PrivateMethodTester {
+  implicit def intToString(int: Int): String = int.toString
+
   "Connections" must {
-    val supplier1  = Supplier("A", 50)
-    val supplier2  = Supplier("B", 70)
-    val recipient1 = Recipient("D", 20)
-    val recipient2 = Recipient("E", 40)
+    val supplier1  = Supplier(1,"A", 50)
+    val supplier2  = Supplier(2,"B", 70)
+    val recipient1 = Recipient(3,"D", 20)
+    val recipient2 = Recipient(4,"E", 40)
 
     "have correct order" when {
       "simple connection" when {

@@ -7,12 +7,14 @@ class MediatorTransportIssueResolverSpec
     extends WordSpec
     with Matchers
     with PrivateMethodTester {
+  implicit def intToString(int: Int): String = int.toString
+
   "Mediator transport issue resolver" must {
-    val supplier1  = Supplier("A", 20)
-    val supplier2  = Supplier("B", 30)
-    val recipient1 = Recipient("D", 10)
-    val recipient2 = Recipient("E", 28)
-    val recipient3 = Recipient("F", 27)
+    val supplier1  = Supplier(1, "A", 20)
+    val supplier2  = Supplier(2,"B", 30)
+    val recipient1 = Recipient(1,"D", 10)
+    val recipient2 = Recipient(2,"E", 28)
+    val recipient3 = Recipient(3,"F", 27)
 
     val purchaseCost = Map(
       supplier1 -> 10,

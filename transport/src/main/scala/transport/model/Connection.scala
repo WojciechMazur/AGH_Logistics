@@ -1,7 +1,9 @@
 package transport.model
 
 sealed trait Connection {
+
   type AttributesType <: ConnectionAttributes
+  def id:         String
   def supplier:   Supplier
   def recipient:  Recipient
   def attributes: AttributesType
@@ -9,11 +11,21 @@ sealed trait Connection {
   def targetFn: Double
   def units:     Double = attributes.units
   def totalCost: Double = attributes.totalCosts
-  def withUnits(units: Double): Connection = this match {
-    case c @ SimpleConnection(_, _, attributes)   => c.copy(attributes = attributes.copy(units = units))
-    case c @ MediatorConnection(_, _, attributes) => c.copy(attributes = attributes.copy(units = units))
+
+  def supplier(supplier:Supplier): Connection = supplier_=(supplier)
+  def supplier_=(supplierNode:   Supplier):  Connection
+  def recipient(recipient: Recipient): Connection = recipient_=(recipient)
+  def recipient_=(recipientNode: Recipient): Connection
+  def units_=(units:             Double):        Connection
+  def units(units:Double): Connection = units_=(units)
+
+  def isVirtual: Boolean = this.recipient.isVirtual || this.supplier.isVirtual
+  override def equals(obj: Any): Boolean = obj match {
+    case connection: Connection ⇒ this.id == connection.id
+    case _ ⇒ false
   }
 
+  def clean: Connection
 }
 
 object Connection {
@@ -43,20 +55,41 @@ object Connection {
     }
   }.reverse
 
-  def priorityValidationRules(supplier: Supplier, recipient: Recipient): Option[Int] = (supplier, recipient) match {
-    case (_:    VirtualSupplier, _) => Some(Int.MinValue)
-    case (_, _: VirtualRecipient)   => Some(Int.MinValue)
-    case _ => None
-  }
+  def priorityValidationRules(supplier: Supplier, recipient: Recipient): Option[Int] =
+    (supplier, recipient) match {
+      case (_:    VirtualNode, _) => Some(Int.MinValue)
+      case (_, _: VirtualNode)   => Some(Int.MinValue)
+      case _ => None
+    }
 }
 
 case class SimpleConnection(
+  id:         String,
   supplier:   Supplier,
   recipient:  Recipient,
   attributes: SimpleConnectionAttributes
 ) extends Connection {
   override type AttributesType = SimpleConnectionAttributes
-  override def targetFn: Double = attributes.transportCost * attributes.units
+  override def targetFn: Double = attributes.unitTransportCost * attributes.units
+  override def supplier_=(supplierNode:   Supplier): Connection = copy(supplier = supplierNode)
+  override def recipient_=(recipientNode: Recipient): Connection = copy(recipient = recipientNode)
+  override def units_=(units:             Double): Connection =
+    copy(
+      attributes = attributes.copy(
+        units = units
+      )
+    )
+  override def clean: Connection = copy(
+    supplier = supplier.copy(
+      available = supplier.supply
+    ),
+    recipient = recipient.copy(
+      available = 0.0
+    ),
+    attributes = attributes.copy(
+      units = 0.0
+    )
+  )
 }
 
 object SimpleConnection {
@@ -67,6 +100,7 @@ object SimpleConnection {
     priority:      Option[Int] = None
   ): SimpleConnection =
     new SimpleConnection(
+      s"${supplier.id}-${recipient.id}",
       supplier,
       recipient,
       SimpleConnectionAttributes(
@@ -74,18 +108,38 @@ object SimpleConnection {
         priority = Connection.priorityValidationRules(supplier, recipient).orElse(priority)
       )
     )
+
   implicit lazy val ordering: Ordering[SimpleConnection] = (x: SimpleConnection, y: SimpleConnection) => {
     Connection.ordering.compare(x, y)
   }
 }
 
 case class MediatorConnection(
+  id:         String,
   supplier:   Supplier,
   recipient:  Recipient,
   attributes: MediatorConnectionAttributes
 ) extends Connection {
   override type AttributesType = MediatorConnectionAttributes
   override def targetFn: Double = attributes.units * (attributes.totalProfits - attributes.totalCosts)
+  override def supplier_=(supplierNode:   Supplier): Connection = copy(supplier = supplierNode)
+  override def recipient_=(recipientNode: Recipient): Connection = copy(recipient = recipientNode)
+  override def units_=(units:             Double): Connection = copy(
+    attributes = attributes.copy(
+      units = units
+    )
+  )
+  override def clean: Connection = copy(
+    supplier = supplier.copy(
+      available = supplier.supply
+    ),
+    recipient = recipient.copy(
+      available = 0.0
+    ),
+    attributes = attributes.copy(
+      units = 0.0
+    )
+  )
 }
 
 object MediatorConnection {
@@ -97,6 +151,7 @@ object MediatorConnection {
     unitSaleProfit: Double,
     priority:       Option[Int] = None
   ) = new MediatorConnection(
+    s"${supplier.id}-${recipient.id}",
     supplier,
     recipient,
     MediatorConnectionAttributes(
@@ -106,7 +161,6 @@ object MediatorConnection {
       priority = Connection.priorityValidationRules(supplier, recipient).orElse(priority)
     )
   )
-
   implicit lazy val ordering: Ordering[MediatorConnection] = (x: MediatorConnection, y: MediatorConnection) => {
     Connection.ordering.compare(x, y)
   }
