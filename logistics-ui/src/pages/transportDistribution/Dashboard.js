@@ -14,8 +14,9 @@ import MenuIcon from '@material-ui/icons/Menu';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import {mainListItems} from './listItems';
 import NodesTable from './NodesTable';
-import {Connection, ConnectionAttributes, Recipient, Supplier} from "../../types";
+import {SimpleConnection, ConnectionAttributes, Recipient, Supplier} from "../../types";
 import update from 'immutability-helper'
+import type {Connection} from "../../types";
 
 const drawerWidth = 240;
 
@@ -102,7 +103,7 @@ type Props = {
 type State = {
     suppliers: Array<Supplier>,
     recipients: Array<Recipient>,
-    connections: Array<Connection>,
+    connections: Array<SimpleConnection>,
     drawerIsOpen: boolean
 }
 
@@ -111,33 +112,30 @@ const mockNodes: {
     recipients: Array<Recipient>
 } = {
     suppliers: [
-        new Supplier("A",null, null,null, 90),
-        new Supplier("B",null, null,null, 55),
-        new Supplier("C",null, null,10, 30),
-        new Supplier("D",15, null,null, 20),
-        new Supplier("E",null, 1,null, 115),
+        new Supplier("A",null, null,null, 50),
+        new Supplier("B",null, null,null, 70),
+        new Supplier("C",null, null,null, 30)
     ],
     recipients: [
-        new Recipient("R1", null, null, null, 80),
-        new Recipient("R2", null, null, null, 90),
-        new Recipient("R3", null, 2, 15, 115),
-        new Recipient("R4", null, 1, null, 20),
-        new Recipient("R5", null, 1, null, 10),
-        new Recipient("R6", null, null, null, 39),
+        new Recipient("R1", null, null, null, 20),
+        new Recipient("R2", null, null, null, 40),
+        new Recipient("R3", null, null, null, 90),
     ]
 };
 
-// $FlowFixMe
-const mockConnections: Array<Connection> = mockNodes.suppliers.flatMap(supplier =>
-    mockNodes.recipients.map(recipient =>
-        new Connection(supplier, recipient, new ConnectionAttributes(
-            Math.round(Math.random()*100%28+1),
-            Math.max(supplier.limit || 0, recipient.limit || 0) || null,
-            Math.max(supplier.priority || 0, recipient.priority || 0) || null,
-            Math.round(Math.random()*100%30+1)
-            )
-        ))
-    );
+const mockConnections: Array<SimpleConnection> = [
+    new SimpleConnection(mockNodes.suppliers[0], mockNodes.recipients[0], new ConnectionAttributes(0,null,null, 3)),
+    new SimpleConnection(mockNodes.suppliers[0], mockNodes.recipients[1], new ConnectionAttributes(0,null,null, 5)),
+    new SimpleConnection(mockNodes.suppliers[0], mockNodes.recipients[2], new ConnectionAttributes(0,null,null, 7)),
+
+    new SimpleConnection(mockNodes.suppliers[1], mockNodes.recipients[0], new ConnectionAttributes(0,null,null, 12)),
+    new SimpleConnection(mockNodes.suppliers[1], mockNodes.recipients[1], new ConnectionAttributes(0,null,null, 10)),
+    new SimpleConnection(mockNodes.suppliers[1], mockNodes.recipients[2], new ConnectionAttributes(0,null,null, 9)),
+
+    new SimpleConnection(mockNodes.suppliers[2], mockNodes.recipients[0], new ConnectionAttributes(0,null,null, 13)),
+    new SimpleConnection(mockNodes.suppliers[2], mockNodes.recipients[1], new ConnectionAttributes(0,null,null, 3)),
+    new SimpleConnection(mockNodes.suppliers[2], mockNodes.recipients[2], new ConnectionAttributes(0,null,null, 9)),
+];
 
 class Dashboard extends React.Component<Props, State> {
     state: State = {
@@ -154,7 +152,7 @@ class Dashboard extends React.Component<Props, State> {
         } else {
             const updatedConnections = this.state.recipients
                 .map(recipient =>
-                    new Connection(supplier, recipient, new ConnectionAttributes(
+                    new SimpleConnection(supplier, recipient, new ConnectionAttributes(
                         0,
                         Math.max(supplier.limit || 0, recipient.limit || 0),
                         Math.max(supplier.priority || 0, recipient.priority || 0),
@@ -162,7 +160,7 @@ class Dashboard extends React.Component<Props, State> {
                 );
             this.setState((prevState) => ({
                 suppliers: update(prevState.suppliers, {$push: [supplier]}),
-                connections: update(prevState.connections, {$push: [...updatedConnections]}).sort(Connection.compare)
+                connections: update(prevState.connections, {$push: [...updatedConnections]}).sort(SimpleConnection.compare)
             }));
         }
     }
@@ -173,7 +171,7 @@ class Dashboard extends React.Component<Props, State> {
         } else {
             const updatedConnections = this.state.suppliers
                 .map(supplier =>
-                    new Connection(supplier, recipient,
+                    new SimpleConnection(supplier, recipient,
                         new ConnectionAttributes(
                             0,
                             Math.max(supplier.limit || 0, recipient.limit || 0),
@@ -182,7 +180,7 @@ class Dashboard extends React.Component<Props, State> {
                 );
             this.setState((prevState) => ({
                 recipients: update(prevState.recipients, {$push: [recipient]}),
-                connections: update(prevState.connections, {$push: [...updatedConnections]}).sort(Connection.compare)
+                connections: update(prevState.connections, {$push: [...updatedConnections]}).sort(SimpleConnection.compare)
             }));
         }
     }
@@ -190,6 +188,26 @@ class Dashboard extends React.Component<Props, State> {
         this.setState({
             recipients: this.state.recipients.filter(r => r !== recipient),
             connections: this.state.connections.filter(c => c.recipient !== recipient)
+        })
+    };
+
+    handleUpdateConnections = (conn: Array<Connection>) => {
+        const connections = conn
+            .map(c => c.SimpleConnection || c.MediatorConnection)
+
+        const suppliers = connections
+            .map(c => c.supplier)
+            .filter((value, index, self) => self.map(c => c.id).indexOf(value.id) === index)
+            .sort((x,y) => x.name.localeCompare(y.name));
+        const recipients = connections
+            .map(c => c.recipient)
+            .filter((value, index, self) => self.map(c => c.id).indexOf(value.id) === index)
+            .sort((x,y) => x.name.localeCompare(y.name));
+
+        this.setState({
+            connections: connections,
+            suppliers: suppliers,
+            recipients: recipients
         })
     };
 
@@ -208,7 +226,10 @@ class Dashboard extends React.Component<Props, State> {
                 const updatedConnections = this.state.connections.map(connection => {
                     if(connection.supplier.id === supplier.id){
                         return update(connection, {
-                            $merge: {supplier: supplier}
+                            $merge: {supplier: supplier},
+                            attributes: {$merge: {
+                                priority: Math.max(supplier.priority || 0, connection.attributes.priority || 0)
+                                }}
                         })}else{
                            return connection
                         }
@@ -230,7 +251,10 @@ class Dashboard extends React.Component<Props, State> {
             const updatedConnections = this.state.connections.map(connection => {
                 if(connection.recipient.id === recipient.id){
                     return update(connection, {
-                        $merge: {recipient: recipient}
+                        $merge: {recipient: recipient},
+                        attributes: {$merge: {
+                                priority: Math.max(recipient.priority || 0, connection.attributes.priority || 0)
+                            }}
                     })}else{
                     return connection
                 }
@@ -244,10 +268,10 @@ class Dashboard extends React.Component<Props, State> {
         }
     };
 
-    handleUpdateConnection = (connection: Connection) => {
+    handleUpdateConnection = (connection: SimpleConnection) => {
         const idx = this.state.connections.findIndex(c => c.id === connection.id);
         if (idx === -1) {
-            console.error("Connection with id " + connection.id + " not found")
+            console.error("SimpleConnection with id " + connection.id + " not found")
         } else {
             this.setState({
                 connections: update(this.state.connections, {

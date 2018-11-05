@@ -1,12 +1,12 @@
 // @flow
 export class Node {
-    id: number | string;
+    id: string;
     name: string;
     available: ?number;
     priority: ?number;
     limit: ?number;
     constructor(
-        id: number | string,
+        id: string,
         name: string,
         available: ?number,
         priority: ?number,
@@ -28,7 +28,7 @@ export class Supplier extends Node{
                 priority: ?number,
                 limit: ?number,
                 supply: number) {
-        super(Supplier.nextId += 1, name, available || supply, priority, limit);
+        super((Supplier.nextId += 1).toString(), name, available || supply, priority, limit);
         this.supply = supply;
     }
 
@@ -42,7 +42,7 @@ export class Recipient extends Node {
                 priority: ?number,
                 limit: ?number,
                 demand: number) {
-        super(Recipient.nextId += 1, name, available || 0, priority, limit);
+        super((Recipient.nextId += 1).toString(), name, available || 0, priority, limit);
         this.demand = demand;
     }
     static nextId: number = -1;
@@ -67,7 +67,7 @@ export class ConnectionAttributes {
     }
 
     static default = new ConnectionAttributes(0, null, null, 0);
-    static compare = (l: Connection, r: Connection) => {
+    static compare = (l: SimpleConnection, r: SimpleConnection) => {
         const leftName = (l.supplier.name + l.recipient.name).toLowerCase();
         const rightName = (r.supplier.name + r.recipient.name).toLowerCase();
         return leftName.localeCompare(rightName)
@@ -90,8 +90,11 @@ export class MediatorConnectionAttributes extends ConnectionAttributes {
     }
 }
 
-export class Connection {
-    id: number | string;
+
+
+
+export class SimpleConnection {
+    id: string;
     supplier: Supplier;
     recipient: Recipient;
     attributes: ConnectionAttributes;
@@ -100,18 +103,46 @@ export class Connection {
         recipient: Recipient,
         attributes: ConnectionAttributes
     ) {
-        this.id = Connection.nextId += 1;
+        this.id = (SimpleConnection.nextId += 1).toString();
         this.supplier = supplier;
         this.recipient = recipient;
         this.attributes = attributes;
     }
 
-    static compare = (left:Connection, right:Connection) => {
+    static compare = (left:SimpleConnection, right:SimpleConnection) => {
         const leftName = left.supplier.name+left.recipient.name;
         const rightName = right.supplier.name+right.recipient.name;
         return leftName.toLowerCase().localeCompare(rightName.toLowerCase());
     };
     static nextId: number = -1;
-
 }
 
+export class MediatorConnection {
+    id: string;
+    supplier: Supplier;
+    recipient: Recipient;
+    attributes: MediatorConnectionAttributes;
+
+    constructor(
+        supplier: Supplier,
+        recipient: Recipient,
+        attributes: MediatorConnectionAttributes
+    ) {
+        this.id = (MediatorConnection.nextId += 1).toString();
+        this.supplier = supplier;
+        this.recipient = recipient;
+        this.attributes = attributes;
+    }
+
+    static compare = (left: SimpleConnection, right: SimpleConnection) => {
+        const leftName = left.supplier.name + left.recipient.name;
+        const rightName = right.supplier.name + right.recipient.name;
+        return leftName.toLowerCase().localeCompare(rightName.toLowerCase());
+    };
+    static nextId: number = -1;
+}
+
+export type Connection = {
+    SimpleConnection: SimpleConnection,
+    MediatorConnection: MediatorConnection
+}

@@ -13,10 +13,16 @@ trait TransportIssueResolver {
   val transportIssueResolverProvider: TransportIssueResolverProvider
 
   final def iterate: ConnectionGraph = {
-    optCycle match {
-      case Some(cycle) => cycle.transform(connectionGraph)
-      case None        => connectionGraph
+    val result = optCycle match {
+      case Some(cycle) =>
+        println("Found cycle")
+        println(s"Initital: ${cycle.initial.id} -> ${cycle.initial}")
+        cycle.tail.foreach(c ⇒ println(s"${c.id} -> ${c}"))
+        cycle.transform(connectionGraph)
+      case None => connectionGraph
     }
+    println("TargetFn after iteration:" + result.target)
+    result
   }
 
   private val connections = connectionGraph.connections.asInstanceOf[Seq[ConnectionType]]
@@ -25,7 +31,7 @@ trait TransportIssueResolver {
     .asInstanceOf[Seq[ConnectionType]]
 
   protected lazy val (baseSuppliers, baseRecipients) = nonZeroConnections
-    .foldLeft((List.empty[SupplierNode], List.empty[RecipientNode])) {
+    .foldLeft((List.empty[Supplier], List.empty[Recipient])) {
       case ((suppliers, recipients), connection) =>
         (
           suppliers :+ connection.supplier,

@@ -1,6 +1,6 @@
 package transport.model
 
-import org.scalatest.{Matchers, PrivateMethodTester, WordSpec}
+import org.scalatest._
 import transport.StandardTransportIssueResolver
 
 class StandardTransportIssueResolverSpec
@@ -32,6 +32,10 @@ class StandardTransportIssueResolverSpec
     "balanced connections" must {
       val graph = StandardTransportIssueResolver.init(baseConnections: _*)
       "have proper initial values" in {
+        import io.circe.syntax._
+        import io.circe.generic.auto._
+        println(graph.connections.asJson)
+
         assert(graph.virtualSupplier.available == 0)
         assert(graph.virtualSupplier.supply == 0)
         assert(graph.virtualRecipient.available == 0)

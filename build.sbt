@@ -30,8 +30,8 @@ lazy val transportTables = (project in file("transport"))
 .settings(commonSettings,
   libraryDependencies ++= Seq(
     breezze,
-    circe,
-    scalatest
+    scalatest,
+    circe
   ).flatten.distinct
 )
 

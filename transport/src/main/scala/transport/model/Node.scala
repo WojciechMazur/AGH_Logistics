@@ -4,40 +4,25 @@ sealed trait Node {
   def id:        String
   def name:      String
   def available: Double
-
+  def isVirtual: Boolean = this.name.toLowerCase.contains("virtual")
   require(available >= 0, "Available amount cannot be negative")
   def available_=(value: Double): Node
+  def withAvailableDelta(value:Double):Node = this.available_=(this.available + value)
 }
 
-sealed trait SupplierNode extends Node {
-  def supply: Double
-  def supply_=(value: Double): SupplierNode
+
+sealed trait VirtualNode {
+  self: Node ⇒
+  override def isVirtual: Boolean = true
 }
 
-object SupplierNode {
-//  implicit lazy val encorder: Encoder[SupplierNode] = deriveEncoder
-//  implicit lazy val decoder: Decoder[SupplierNode] = deriveDecoder
-}
-
-sealed trait RecipientNode extends Node {
-  def demand: Double
-  def demand_=(value: Double): RecipientNode
-}
-
-object RecipientNode {
-//  implicit lazy val encorder: Encoder[RecipientNode] = deriveEncoder
-//  implicit lazy val decoder:  Decoder[RecipientNode] = deriveDecoder
-}
-
-sealed trait VirtualNode {}
-
-case class Recipient(id: String, name: String, demand: Double, available: Double = 0) extends RecipientNode {
-  override def demand_=(value:    Double): Recipient = copy(demand    = value)
+case class Recipient(id: String, name: String, demand: Double, available: Double = 0) extends Node {
+  def withDemand(value:    Double): Recipient = copy(demand    = value)
   override def available_=(value: Double): Recipient = copy(available = value)
 }
 
-case class Supplier(id: String, name: String, supply: Double, available: Double) extends SupplierNode {
-  override def supply_=(value:    Double): Supplier = copy(supply    = value)
+case class Supplier(id: String, name: String, supply: Double, available: Double) extends Node {
+  def withSupply(value:    Double): Supplier = copy(supply = value)
   override def available_=(value: Double): Supplier = copy(available = value)
 }
 
@@ -46,24 +31,14 @@ object Supplier {
     new Supplier(id, name, supply, supply)
 }
 
-case class VirtualSupplier(supply: Double, available: Double) extends SupplierNode with VirtualNode {
-  val id   = "vs-01"
-  val name = "virtualSupplier"
-  override def supply_=(value:    Double): VirtualSupplier = copy(supply    = value)
-  override def available_=(value: Double): VirtualSupplier = copy(available = value)
-}
-
 object VirtualSupplier {
-  def apply(supply: Double): VirtualSupplier = new VirtualSupplier(supply, supply)
-}
-
-case class VirtualRecipient(demand: Double, available: Double) extends RecipientNode with VirtualNode {
-  val id   = "vr-01"
-  val name = "virtualRecipient"
-  override def demand_=(value:    Double): VirtualRecipient = copy(demand    = value)
-  override def available_=(value: Double): VirtualRecipient = copy(available = value)
+  def apply(supply: Double, available: Double): Supplier with VirtualNode =
+    new Supplier("vs-01", "virtualSupplier", supply, available) with VirtualNode
+  def apply(supply: Double): Supplier with VirtualNode = VirtualSupplier(supply, supply)
 }
 
 object VirtualRecipient {
-  def apply(demand: Double): VirtualRecipient = new VirtualRecipient(demand, 0)
+  def apply(demand: Double, available: Double): Recipient with VirtualNode =
+    new Recipient("vr-01", "virtualRecipient", demand, available) with VirtualNode
+  def apply(demand: Double): Recipient with VirtualNode = VirtualRecipient(demand, 0)
 }

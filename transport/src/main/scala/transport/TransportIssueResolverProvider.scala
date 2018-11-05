@@ -6,8 +6,9 @@ trait TransportIssueResolverProvider {
   val initOrder: InitOrder
   protected def buildConnectionGraph(connections: Vector[Connection]): ConnectionGraph
   final def init(connections:                     Connection*): ConnectionGraph = {
-    val initialGraph = buildConnectionGraph(connections.toVector)
-    disposeInitialLoad(initialGraph)
+    val initialGraph = buildConnectionGraph(connections.toVector.map(_.units(0)))
+    val x            = disposeInitialLoad(initialGraph)
+    x
   }
 
   private final def disposeInitialLoad(graph: ConnectionGraph): ConnectionGraph = {

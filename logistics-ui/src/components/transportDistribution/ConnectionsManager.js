@@ -85,16 +85,20 @@ class ConnectionsManager extends React.Component<Props, State> {
                     <TableRow>
                         <TableCell/>
                         {this.props.recipients.map(recipient =>
-                            <TableCell className={this.props.classes.tableCell} key={"Recipient-" + recipient.id} numeric>{recipient.name}</TableCell>
+                            <TableCell className={this.props.classes.tableCell} key={"Recipient-" + recipient.id} numeric>
+                                <b>{recipient.name}</b> [{recipient.demand}]
+                                </TableCell>
                         )}
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {this.props.suppliers.map(supplier =>
                         <TableRow key={supplier.id}>
-                            <TableCell key={"Supplier-" + supplier.id}>{supplier.name}</TableCell>
+                            <TableCell key={"Supplier-" + supplier.id}>
+                                    <b>{supplier.name}</b> [{supplier.supply}]
+                            </TableCell>
                             {this.props.recipients.map(recipient => {
-                                const connection = this.props.connections.find((connection) => connection.supplier === supplier && connection.recipient === recipient);
+                                const connection = this.props.connections.find((connection) => connection.supplier.id === supplier.id && connection.recipient.id === recipient.id);
                                 return <TableCell className={this.props.classes.tableCell} key={supplier.name + '-' + recipient.name}
                                                   numeric>
                                     <Input className={this.props.classes.input} type={"number"}
@@ -133,7 +137,7 @@ class ConnectionsManager extends React.Component<Props, State> {
                         <TableRow key={supplier.id}>
                             <TableCell   key={'Supplier-' + supplier.id}>{supplier.name}</TableCell>
                             {this.props.recipients.map(recipient => {
-                                const connection = this.props.connections.find((connection) => connection.supplier === supplier && connection.recipient === recipient);
+                                const connection = this.props.connections.find((connection) => connection.supplier.id === supplier.id && connection.recipient.id === recipient.id);
                                 return <TableCell className={this.props.classes.tableCell} key={supplier.name + '-' + recipient.name}
                                                   numeric>
                                     <Input className={this.props.classes.input} type={"number"}
@@ -172,7 +176,7 @@ class ConnectionsManager extends React.Component<Props, State> {
                         <TableRow key={supplier.id}>
                             <TableCell  key={'Supplier-' + supplier.id}>{supplier.name}</TableCell>
                             {this.props.recipients.map(recipient => {
-                                const connection = this.props.connections.find((connection) => connection.supplier === supplier && connection.recipient === recipient);
+                                const connection = this.props.connections.find((connection) => connection.supplier.id === supplier.id && connection.recipient.id === recipient.id);
                                 return <TableCell className={this.props.classes.tableCell} key={supplier.name + '-' + recipient.name} numeric >
                                     <Input className={this.props.classes.input} type={"number"}
                                            defaultValue={connection.attributes.transportCost}
@@ -210,7 +214,7 @@ class ConnectionsManager extends React.Component<Props, State> {
                         <TableRow key={supplier.id}>
                             <TableCell  key={'Supplier-' + supplier.id}>{supplier.name}</TableCell>
                             {this.props.recipients.map(recipient => {
-                                const connection = this.props.connections.find((connection) => connection.supplier === supplier && connection.recipient === recipient);
+                                const connection = this.props.connections.find((connection) => connection.supplier.id === supplier.id && connection.recipient.id === recipient.id);
                                 return <TableCell className={this.props.classes.tableCell} key={supplier.name + '-' + recipient.name} numeric >
                                     <Input className={this.props.classes.input} type={"number"}
                                            defaultValue={connection.attributes.priority}

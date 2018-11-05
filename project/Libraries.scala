@@ -5,6 +5,7 @@ object Libraries {
     lazy val akka            = "2.5.17"
     lazy val akkaHttp        = "10.1.5"
     lazy val akkaHttpCirce   = "1.22.0"
+    lazy val akkaHttpCors    = "0.3.1"
     lazy val breeze          = "0.13.2"
     lazy val circe           = "0.10.0"
     lazy val circeDerivation = "0.10.0-M1"
@@ -26,12 +27,13 @@ object Libraries {
   lazy val akka: Seq[ModuleID] = Seq(
     "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
     "com.typesafe.akka" %% "akka-stream" % Versions.akka,
-    "de.heikoseeberger" %% "akka-http-circe" % Versions.akkaHttpCirce,
+    "ch.megard" %% "akka-http-cors" % Versions.akkaHttpCors,
+    "de.heikoseeberger" %% "akka-http-circe" % Versions.akkaHttpCirce
   )
 
   lazy val scalatest: Seq[ModuleID] = Seq(
     "org.scalactic" %% "scalactic" % Versions.scalatest,
-    "org.scalatest" %% "scalatest" % Versions.scalatest % "test",
+    "org.scalatest" %% "scalatest" % Versions.scalatest % "test"
   )
 
 }

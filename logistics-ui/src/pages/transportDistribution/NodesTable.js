@@ -11,7 +11,7 @@ import Tabs from "@material-ui/core/Tabs/Tabs";
 import Typography from '@material-ui/core/Typography';
 import ConnectionsManager from "../../components/transportDistribution/ConnectionsManager";
 import SupplierAddForm from "../../components/transportDistribution/supplier/SupplierAddForm"
-import {Connection, Recipient, Supplier} from "../../types";
+import {SimpleConnection, Recipient, Supplier} from "../../types";
 import Dashboard from "./Dashboard";
 import RecipientAddForm from "../../components/transportDistribution/recipient/RecipientAddForm";
 import {SupplierEditForm} from "../../components/transportDistribution/supplier/SupplierEditForm";
@@ -19,8 +19,7 @@ import EditFormModal from "../../components/EditFormModal";
 import {RecipientEditForm} from "../../components/transportDistribution/recipient/RecipientEditForm";
 import Button from "@material-ui/core/Button/Button";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-
-
+import type {Connection} from "../../types";
 
 
 const TabNames = {
@@ -30,7 +29,7 @@ const TabNames = {
 };
 
 type Props = {
-    connections: Array<Connection>,
+    connections: Array<SimpleConnection>,
     suppliers: Array<Supplier>,
     recipients: Array<Recipient>,
     dashboardRef: Dashboard
@@ -153,9 +152,9 @@ class NodesTableTabs extends React.Component<Props, State> {
 
     }
     handleResolveButton = () => {
-        if (!this.state.isResolved && this.props.connections.every(c => c.attributes.units !== undefined && c.attributes.transportCost !== undefined)) {
-            console.log(JSON.stringify(this.props.connections));
-            fetch('https://localhost:8080/transport/', {
+
+        if (this.props.connections.every(c => c.attributes.transportCost !== undefined)) {
+            fetch('http://localhost:8080/transport/standard', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -163,15 +162,16 @@ class NodesTableTabs extends React.Component<Props, State> {
                 },
                 body: JSON.stringify(this.props.connections)
             }).then((value, err) => {
-                console.log(value);
-                console.error(err);
-                return value
-            }).then(value => {
-                    console.log(value);
+                err && console.error(err);
+                if(value) {
+                    return value.json()
+                }
+                return [];
+            }).then((connections: Array<Connection>) => {
+                    this.props.dashboardRef.handleUpdateConnections(connections);
                     this.setState({
                         isResolved: true
-                        //Todo update resolved connections
-                    })
+                    });
                 }
             )
         } else {
